@@ -69,8 +69,7 @@ async def download_pdf(paper_id: str, export_dir: str) -> str:
             # Write file in executor to avoid blocking
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(
-                None,
-                lambda: open(pdf_path, "wb").write(response.content)
+                None, lambda: open(pdf_path, "wb").write(response.content)
             )
 
         logger.info(f"Downloaded PDF: {pdf_path}")
@@ -301,7 +300,7 @@ async def handle_export_papers(arguments: Dict[str, Any]) -> List[types.TextCont
                         def write_json_file():
                             with open(text_file, "w", encoding="utf-8") as f:
                                 json.dump(text_data, f, indent=2, ensure_ascii=False)
-                        
+
                         await loop.run_in_executor(None, write_json_file)
 
                         paper["text_file"] = text_file
@@ -316,11 +315,11 @@ async def handle_export_papers(arguments: Dict[str, Any]) -> List[types.TextCont
 
         # Write to JSON file (in executor to avoid blocking)
         json_file = os.path.join(export_dir, f"{filename}.json")
-        
+
         def write_main_json():
             with open(json_file, "w", encoding="utf-8") as f:
                 json.dump(export_data, f, indent=2, ensure_ascii=False)
-        
+
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, write_main_json)
 
@@ -343,11 +342,11 @@ async def handle_export_papers(arguments: Dict[str, Any]) -> List[types.TextCont
         }
 
         summary_file = os.path.join(export_dir, f"{filename}_summary.json")
-        
+
         def write_summary_json():
             with open(summary_file, "w", encoding="utf-8") as f:
                 json.dump(summary_data, f, indent=2, ensure_ascii=False)
-        
+
         await loop.run_in_executor(None, write_summary_json)
 
         # Format response

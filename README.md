@@ -16,56 +16,118 @@ A Model Context Protocol (MCP) server that provides access to OpenReview data fo
 
 ## Installation
 
+### 1. Clone the repository
+```bash
+git clone https://github.com/yourusername/openreview-mcp-server.git
+cd openreview-mcp-server
+```
+
+### 2. Create and activate virtual environment
+```bash
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+### 3. Install the package
 ```bash
 pip install -e .
 ```
 
-## Configuration
+## Configuration for Cursor
 
-Create a `.env` file with your OpenReview credentials for local development:
+### Step 1: Get your OpenReview credentials
+You'll need your OpenReview account email and password.
 
-```env
-OPENREVIEW_USERNAME=your_email@domain.com
-OPENREVIEW_PASSWORD=your_password
+### Step 2: Find your Cursor MCP configuration file
 
-# Optional
-OPENREVIEW_BASE_URL=https://api2.openreview.net
-OPENREVIEW_DEFAULT_EXPORT_DIR=./openreview_exports
-```
+Either run cmd+shift+P to open the Command Palette and find MCP settings that will lead you to the mcp.json, or look for:
 
-## Usage with Claude Code
+**Cursor:** `~/.cursor/mcp.json`  
 
-Add server from the command line:
+### Step 3: Add the OpenReview MCP server
 
-```sh
-claude mcp add-json openreview '{"command":"openreview-mcp-server","cwd":"/install/dir/openreview-mcp-server","env":{"OPENREVIEW_USERNAME":"username","OPENREVIEW_PASSWORD":"password","OPENREVIEW_BASE_URL":"https://api2.openreview.net","OPENREVIEW_DEFAULT_EXPORT_DIR":"./openreview_exports"}}'
-```
-
-Or add to your Claude Code MCP configuration:
+Open the MCP configuration file and add the `openreview` server to the `mcpServers` section:
 
 ```json
 {
   "mcpServers": {
     "openreview": {
-      "command": "python",
+      "command": "/ABSOLUTE/PATH/TO/openreview-mcp-server/venv/bin/python",
       "args": ["-m", "openreview_mcp_server"],
+      "cwd": "/ABSOLUTE/PATH/TO/openreview-mcp-server",
       "env": {
         "OPENREVIEW_USERNAME": "your_email@domain.com",
-        "OPENREVIEW_PASSWORD": "your_password"
+        "OPENREVIEW_PASSWORD": "your_password",
+        "OPENREVIEW_BASE_URL": "https://api2.openreview.net",
+        "OPENREVIEW_DEFAULT_EXPORT_DIR": "./openreview_exports"
       }
     }
   }
 }
 ```
 
-Then run your query:
+**Important:** 
+- Replace `/ABSOLUTE/PATH/TO/openreview-mcp-server` with the actual path (e.g., `/Users/yourname/workspace/openreview-mcp-server`)
+- Replace `your_email@domain.com` and `your_password` with your OpenReview credentials
+- Use the full path to the venv Python interpreter (ending in `/venv/bin/python`)
 
+**Example configuration:**
+```json
+{
+  "mcpServers": {
+    "openreview": {
+      "command": "/Users/john/workspace/openreview-mcp-server/venv/bin/python",
+      "args": ["-m", "openreview_mcp_server"],
+      "cwd": "/Users/john/workspace/openreview-mcp-server",
+      "env": {
+        "OPENREVIEW_USERNAME": "john@university.edu",
+        "OPENREVIEW_PASSWORD": "mySecurePassword123",
+        "OPENREVIEW_BASE_URL": "https://api2.openreview.net",
+        "OPENREVIEW_DEFAULT_EXPORT_DIR": "./openreview_exports"
+      }
+    }
+  }
+}
 ```
-Can you please search papers using openreview mcp with keywords "time series token merging", match all keywords, venues ICLR and ICML 2025?
-...
-Please export the contents of this paper.
+
+### Step 4: Restart Cursor
+
+Completely quit and reopen Cursor for the MCP server to load.
+
+## Usage
+
+Once configured and Cursor is restarted, you can use natural language to interact with the OpenReview MCP server:
+
+### Example queries:
+
+**Search for papers:**
 ```
- 
+Search OpenReview for papers about "multimodal tokenization" from ICML 2025, ICLR 2025 and NeurIPS 2025
+```
+
+**Get your own papers:**
+```
+Get my papers from OpenReview using email researcher@university.edu
+```
+
+**Export papers with PDFs:**
+```
+Export papers about "neural networks" from ICLR 2024, download PDFs and extract text
+```
+
+**Get conference papers:**
+```
+Show me all papers from NeurIPS 2024
+```
+
+The server will automatically:
+- Fetch papers from OpenReview
+- Search across titles, abstracts, and authors
+- Download and extract text from PDFs
+- Export results to JSON for further analysis
+
+Exported files are saved to `./openreview_exports/` by default (or your custom directory).
+
 ## Example output
 
 ![Example Output](public/output.jpg)
