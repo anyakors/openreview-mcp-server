@@ -112,7 +112,7 @@ Get my papers from OpenReview using email researcher@university.edu
 
 **Export papers with PDFs:**
 ```
-Export papers about "neural networks" from ICLR 2024, download PDFs and extract text
+Export papers about "multimodal tokenization" from ICLR 2024, download PDFs and extract text
 ```
 
 **Get conference papers:**
