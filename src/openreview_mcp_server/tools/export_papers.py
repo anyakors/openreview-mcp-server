@@ -9,7 +9,8 @@ import json
 import logging
 import os
 import re
-import requests
+import httpx
+import asyncio
 from datetime import datetime
 import mcp.types as types
 from typing import Dict, Any, List
@@ -55,17 +56,22 @@ def extract_up_to_references(pdf_path: str) -> str:
         return full_text
 
 
-def download_pdf(paper_id: str, export_dir: str) -> str:
-    """Download PDF for a paper and return the file path."""
+async def download_pdf(paper_id: str, export_dir: str) -> str:
+    """Download PDF for a paper and return the file path (async)."""
     pdf_url = f"https://openreview.net/pdf?id={paper_id}"
     pdf_path = os.path.join(export_dir, f"{paper_id}.pdf")
 
     try:
-        response = requests.get(pdf_url, timeout=30)
-        response.raise_for_status()
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(pdf_url)
+            response.raise_for_status()
 
-        with open(pdf_path, "wb") as f:
-            f.write(response.content)
+            # Write file in executor to avoid blocking
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(
+                None,
+                lambda: open(pdf_path, "wb").write(response.content)
+            )
 
         logger.info(f"Downloaded PDF: {pdf_path}")
         return pdf_path
@@ -268,13 +274,16 @@ async def handle_export_papers(arguments: Dict[str, Any]) -> List[types.TextCont
             for paper in export_data["papers"]:
                 paper_id = paper["id"]
 
-                # Download PDF
-                pdf_path = download_pdf(paper_id, export_dir)
+                # Download PDF (async)
+                pdf_path = await download_pdf(paper_id, export_dir)
                 if pdf_path and os.path.exists(pdf_path):
                     paper["pdf_file"] = pdf_path
 
-                    # Extract text up to references
-                    extracted_text = extract_up_to_references(pdf_path)
+                    # Extract text up to references (run in executor to avoid blocking)
+                    loop = asyncio.get_event_loop()
+                    extracted_text = await loop.run_in_executor(
+                        None, extract_up_to_references, pdf_path
+                    )
                     if extracted_text:
                         # Save extracted text to JSON file
                         text_file = os.path.join(export_dir, f"{paper_id}_text.json")
@@ -288,8 +297,12 @@ async def handle_export_papers(arguments: Dict[str, Any]) -> List[types.TextCont
                             "pdf_file": pdf_path,
                         }
 
-                        with open(text_file, "w", encoding="utf-8") as f:
-                            json.dump(text_data, f, indent=2, ensure_ascii=False)
+                        # Write file in executor to avoid blocking
+                        def write_json_file():
+                            with open(text_file, "w", encoding="utf-8") as f:
+                                json.dump(text_data, f, indent=2, ensure_ascii=False)
+                        
+                        await loop.run_in_executor(None, write_json_file)
 
                         paper["text_file"] = text_file
                         paper["has_extracted_text"] = True
@@ -301,10 +314,15 @@ async def handle_export_papers(arguments: Dict[str, Any]) -> List[types.TextCont
                     paper["has_extracted_text"] = False
                     logger.warning(f"Failed to download PDF for {paper_id}")
 
-        # Write to JSON file
+        # Write to JSON file (in executor to avoid blocking)
         json_file = os.path.join(export_dir, f"{filename}.json")
-        with open(json_file, "w", encoding="utf-8") as f:
-            json.dump(export_data, f, indent=2, ensure_ascii=False)
+        
+        def write_main_json():
+            with open(json_file, "w", encoding="utf-8") as f:
+                json.dump(export_data, f, indent=2, ensure_ascii=False)
+        
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, write_main_json)
 
         # Create a summary file for quick reference
         summary_data = {
@@ -325,8 +343,12 @@ async def handle_export_papers(arguments: Dict[str, Any]) -> List[types.TextCont
         }
 
         summary_file = os.path.join(export_dir, f"{filename}_summary.json")
-        with open(summary_file, "w", encoding="utf-8") as f:
-            json.dump(summary_data, f, indent=2, ensure_ascii=False)
+        
+        def write_summary_json():
+            with open(summary_file, "w", encoding="utf-8") as f:
+                json.dump(summary_data, f, indent=2, ensure_ascii=False)
+        
+        await loop.run_in_executor(None, write_summary_json)
 
         # Format response
         result = f"Export completed successfully!\n\n"
